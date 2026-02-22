@@ -6,6 +6,8 @@ import Link from "next/link";
 import { generateShareText, getWhatsAppShareUrl, getTwitterShareUrl } from "@/lib/utils";
 import { BadgeCard } from "@/components/ui/badge-card";
 import { AnimatedButton } from "@/components/ui/animated-button";
+import { ShareCard } from "@/components/ui/share-card";
+import { Confetti } from "@/components/ui/confetti";
 import { motion } from "framer-motion";
 
 interface Result {
@@ -66,7 +68,7 @@ export default function ResultPage() {
   const [showInvite, setShowInvite] = useState(false);
   const [emails, setEmails] = useState(["", ""]);
   const [inviteSent, setInviteSent] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
 
   useEffect(() => {
     fetch(`/api/results?id=${params.id}`)
@@ -74,6 +76,8 @@ export default function ResultPage() {
       .then((d) => {
         setResult(d.result);
         setLoading(false);
+        setShowConfetti(true);
+        setTimeout(() => setShowConfetti(false), 4000);
       })
       .catch(() => setLoading(false));
   }, [params.id]);
@@ -94,13 +98,6 @@ export default function ResultPage() {
     setInviteSent(true);
   }
 
-  function handleCopy() {
-    if (!result) return;
-    const text = generateShareText(result.score, result.badge);
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }
 
   if (loading) {
     return (
@@ -142,6 +139,7 @@ export default function ResultPage() {
       </nav>
 
       <div className="max-w-2xl mx-auto px-4 py-10">
+        {showConfetti && <Confetti />}
         {/* Badge hero */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -249,40 +247,7 @@ export default function ResultPage() {
         )}
 
         {/* Share */}
-        <div className="card p-6 mb-6 slide-up">
-          <h2 className="font-bold mb-4">Partage ton ADN </h2>
-          <div className="bg-[#1a1a2e] rounded-xl p-4 mb-4 text-sm text-gray-300 italic">
-            &ldquo;{shareText}&rdquo;
-          </div>
-          <div className="grid grid-cols-3 gap-3">
-            <a
-              href={whatsappUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex flex-col items-center gap-1 bg-[#25D366]/10 border border-[#25D366]/30 rounded-xl py-3 hover:bg-[#25D366]/20 transition-colors"
-            >
-              <span className="text-xl"> </span>
-              <span className="text-xs text-[#25D366] font-bold">WhatsApp</span>
-            </a>
-            <a
-              href={twitterUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex flex-col items-center gap-1 bg-[#1DA1F2]/10 border border-[#1DA1F2]/30 rounded-xl py-3 hover:bg-[#1DA1F2]/20 transition-colors"
-            >
-              <span className="text-xl"> </span>
-              <span className="text-xs text-[#1DA1F2] font-bold">Twitter/X</span>
-            </a>
-            <AnimatedButton
-              onClick={handleCopy}
-              variant="ghost"
-              className="flex flex-col items-center gap-1 bg-[#FF6B35]/10 border border-[#FF6B35]/30 py-3"
-            >
-              <span className="text-xl">{copied ? " " : " "}</span>
-              <span className="text-xs text-[#FF6B35] font-bold">{copied ? "Copié !" : "Copier"}</span>
-            </AnimatedButton>
-          </div>
-        </div>
+        <ShareCard shareText={shareText} whatsappUrl={whatsappUrl} twitterUrl={twitterUrl} />
 
         {/* Premium upsell */}
         <div className="card p-6 text-center slide-up border-[#FF6B35]/20">
