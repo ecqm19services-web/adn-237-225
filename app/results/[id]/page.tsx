@@ -4,6 +4,9 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { generateShareText, getWhatsAppShareUrl, getTwitterShareUrl } from "@/lib/utils";
+import { BadgeCard } from "@/components/ui/badge-card";
+import { AnimatedButton } from "@/components/ui/animated-button";
+import { motion } from "framer-motion";
 
 interface Result {
   id: string;
@@ -140,23 +143,26 @@ export default function ResultPage() {
 
       <div className="max-w-2xl mx-auto px-4 py-10">
         {/* Badge hero */}
-        <div className="card p-8 text-center mb-6 badge-glow slide-up">
-          <div className="text-6xl mb-4 float inline-block">
-            {result.badge.split(" ")[1] || "🧬"}
-          </div>
-          <h1 className="text-3xl font-black mb-2">{result.badge}</h1>
-          <p className="text-gray-400 text-sm mb-6">{result.description}</p>
-
-          <ScoreRing score={result.score} />
-
-          <div className="mt-4 text-sm text-gray-500">Score ADN Global</div>
-        </div>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+        className="mb-12"
+      >
+        <BadgeCard
+          badge={result.badge}
+          score={result.score}
+          badgeColor={result.badge_color}
+          description={result.description}
+          size="large"
+        />
+      </motion.div>
 
         {/* AI Interpretation */}
         {result.ai_interpretation && result.ai_interpretation !== result.description && (
           <div className="card p-6 mb-6 slide-up border-[#FF6B35]/20">
             <div className="flex items-center gap-2 mb-3">
-              <span>🤖</span>
+              <span> </span>
               <span className="text-sm font-bold text-[#FF6B35]">Analyse IA personnalisée</span>
             </div>
             <p className="text-gray-300 text-sm leading-relaxed">{result.ai_interpretation}</p>
@@ -188,7 +194,7 @@ export default function ResultPage() {
         {!result.premium_badge_unlocked && (
           <div className="card p-6 mb-6 border-[#FFD700]/30 slide-up">
             <div className="flex items-center gap-2 mb-3">
-              <span>⭐</span>
+              <span> </span>
               <span className="font-bold text-[#FFD700]">Débloque ton Badge Premium</span>
             </div>
             <p className="text-gray-400 text-sm mb-4">
@@ -196,11 +202,11 @@ export default function ResultPage() {
             </p>
             {!showInvite ? (
               <button onClick={() => setShowInvite(true)} className="btn-primary w-full">
-                🔥 Inviter 2 amis maintenant
+                 Inviter 2 amis maintenant
               </button>
             ) : inviteSent ? (
               <div className="text-center py-4">
-                <div className="text-3xl mb-2">✅</div>
+                <div className="text-3xl mb-2"> </div>
                 <p className="text-green-400 font-bold">Invitations envoyées !</p>
                 <p className="text-gray-400 text-sm mt-1">Tu recevras ton badge premium dans 24h.</p>
               </div>
@@ -221,7 +227,7 @@ export default function ResultPage() {
                   />
                 ))}
                 <button onClick={handleSendInvites} className="btn-primary w-full">
-                  Envoyer les invitations 🚀
+                  Envoyer les invitations 
                 </button>
               </div>
             )}
@@ -231,7 +237,7 @@ export default function ResultPage() {
         {result.premium_badge_unlocked && (
           <div className="card p-6 mb-6 border-[#FFD700]/50 bg-[#1a1500] slide-up">
             <div className="text-center">
-              <div className="text-4xl mb-2">🏆</div>
+              <div className="text-4xl mb-2"> </div>
               <h3 className="font-black text-[#FFD700] text-xl mb-1">Badge Premium Débloqué !</h3>
               {result.social_score !== undefined && (
                 <p className="text-gray-300 text-sm">
@@ -244,7 +250,7 @@ export default function ResultPage() {
 
         {/* Share */}
         <div className="card p-6 mb-6 slide-up">
-          <h2 className="font-bold mb-4">Partage ton ADN 🔥</h2>
+          <h2 className="font-bold mb-4">Partage ton ADN </h2>
           <div className="bg-[#1a1a2e] rounded-xl p-4 mb-4 text-sm text-gray-300 italic">
             &ldquo;{shareText}&rdquo;
           </div>
@@ -255,7 +261,7 @@ export default function ResultPage() {
               rel="noopener noreferrer"
               className="flex flex-col items-center gap-1 bg-[#25D366]/10 border border-[#25D366]/30 rounded-xl py-3 hover:bg-[#25D366]/20 transition-colors"
             >
-              <span className="text-xl">📱</span>
+              <span className="text-xl"> </span>
               <span className="text-xs text-[#25D366] font-bold">WhatsApp</span>
             </a>
             <a
@@ -264,22 +270,23 @@ export default function ResultPage() {
               rel="noopener noreferrer"
               className="flex flex-col items-center gap-1 bg-[#1DA1F2]/10 border border-[#1DA1F2]/30 rounded-xl py-3 hover:bg-[#1DA1F2]/20 transition-colors"
             >
-              <span className="text-xl">🐦</span>
+              <span className="text-xl"> </span>
               <span className="text-xs text-[#1DA1F2] font-bold">Twitter/X</span>
             </a>
-            <button
+            <AnimatedButton
               onClick={handleCopy}
-              className="flex flex-col items-center gap-1 bg-[#FF6B35]/10 border border-[#FF6B35]/30 rounded-xl py-3 hover:bg-[#FF6B35]/20 transition-colors"
+              variant="ghost"
+              className="flex flex-col items-center gap-1 bg-[#FF6B35]/10 border border-[#FF6B35]/30 py-3"
             >
-              <span className="text-xl">{copied ? "✅" : "📋"}</span>
+              <span className="text-xl">{copied ? " " : " "}</span>
               <span className="text-xs text-[#FF6B35] font-bold">{copied ? "Copié !" : "Copier"}</span>
-            </button>
+            </AnimatedButton>
           </div>
         </div>
 
         {/* Premium upsell */}
         <div className="card p-6 text-center slide-up border-[#FF6B35]/20">
-          <h3 className="font-bold text-lg mb-2">Passe en Premium ⭐</h3>
+          <h3 className="font-bold text-lg mb-2">Passe en Premium </h3>
           <p className="text-gray-400 text-sm mb-4">
             Historique de scores, comparaison par ville, badge QR, analyse détaillée — seulement <strong className="text-[#FF6B35]">1000 FCFA/trimestre</strong>
           </p>

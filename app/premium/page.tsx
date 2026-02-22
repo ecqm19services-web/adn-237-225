@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { QRModal } from "@/components/ui/qr-modal";
+import { AnimatedButton } from "@/components/ui/animated-button";
+import { motion } from "framer-motion";
 
 const FEATURES_FREE = [
   "Score ADN global (0-100)",
@@ -27,6 +30,8 @@ export default function PremiumPage() {
   const [plan, setPlan] = useState<"quarterly" | "annual">("quarterly");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showQR, setShowQR] = useState(false);
+  const [paymentUrl, setPaymentUrl] = useState("");
 
   async function handleCheckout() {
     if (!email) {
@@ -43,7 +48,8 @@ export default function PremiumPage() {
       });
       const data = await res.json();
       if (data.paymentUrl) {
-        window.location.href = data.paymentUrl;
+        setPaymentUrl(data.paymentUrl);
+        setShowQR(true);
       } else {
         setError(data.error || "Erreur lors de l'initialisation du paiement.");
       }
@@ -168,17 +174,19 @@ export default function PremiumPage() {
                 className="w-full bg-[#1a1a2e] border border-[#2a2a3a] rounded-xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-[#FF6B35] text-sm"
               />
               {error && <p className="text-red-400 text-xs">{error}</p>}
-              <button
+              <AnimatedButton
                 onClick={handleCheckout}
                 disabled={loading}
-                className="btn-primary w-full disabled:opacity-50"
+                variant="primary"
+                size="lg"
+                className="w-full"
               >
-                {loading ? "Redirection..." : `Payer ${plan === "quarterly" ? "1 000" : "3 500"} FCFA →`}
-              </button>
+                {loading ? "Génération QR..." : `Payer ${plan === "quarterly" ? "1 000" : "3 500"} FCFA 🌊`}
+              </AnimatedButton>
             </div>
 
             <p className="text-xs text-gray-600 mt-3 text-center">
-              Paiement sécurisé via CinetPay — Wave, Orange Money, MTN, carte bancaire
+              Paiement Wave via QR sécurisé. Ouvre l&apos;app Wave et valide le paiement.
             </p>
           </div>
         </div>
@@ -187,7 +195,7 @@ export default function PremiumPage() {
         <div className="card p-6 text-center mb-8">
           <h3 className="font-bold mb-4 text-gray-300">Méthodes de paiement acceptées</h3>
           <div className="flex flex-wrap justify-center gap-4">
-            {["Wave 🌊", "Orange Money 🟠", "MTN MoMo 💛", "Moov Money 🔵", "Carte bancaire 💳"].map((m) => (
+            {["Wave 🌊"].map((m) => (
               <span key={m} className="bg-[#1a1a2e] border border-[#2a2a3a] rounded-lg px-4 py-2 text-sm text-gray-300">
                 {m}
               </span>
@@ -223,6 +231,14 @@ export default function PremiumPage() {
           ))}
         </div>
       </div>
+
+      <QRModal
+        isOpen={showQR}
+        onClose={() => setShowQR(false)}
+        paymentUrl={paymentUrl}
+        amount={plan === "quarterly" ? 1000 : 3500}
+        plan={plan}
+      />
     </main>
   );
 }

@@ -1,65 +1,42 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase";
+import { appwriteConfig, ensureAppwriteConfig, getAppwrite } from "@/lib/appwrite";
+import { Query } from "node-appwrite";
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { cpm_trans_id, cpm_site_id, cpm_amount, cpm_currency, cpm_payid, cpm_payment_date, cpm_payment_time, cpm_error_message, cpm_result, payment_method, cel_phone_num } = body;
+    const {
+      transaction_id,
+      status,
+      provider_ref,
+      payment_method,
+      phone,
+      paid_at,
+    } = body;
 
-    if (cpm_result !== "00") {
-      await supabaseAdmin
-        .from("payment_logs")
-        .update({ status: "failed", provider_ref: cpm_payid, error: cpm_error_message })
-        .eq("transaction_id", cpm_trans_id);
-      return NextResponse.json({ message: "Payment failed recorded" });
+    if (!transaction_id) {
+      return NextResponse.json({ error: "Missing transaction_id" }, { status: 400 });
     }
 
-    const { data: log } = await supabaseAdmin
-      .from("payment_logs")
-      .select("*")
-      .eq("transaction_id", cpm_trans_id)
-      .single();
+    ensureAppwriteConfig();
+    const { db } = getAppwrite();
+
+    const list = await db.listDocuments(appwriteConfig.databaseId, appwriteConfig.collections.payments, [
+      Query.equal("transaction_id", transaction_id),
+    ]);
+    const log = list.documents[0];
 
     if (!log) {
       return NextResponse.json({ error: "Transaction not found" }, { status: 404 });
     }
 
-    await supabaseAdmin
-      .from("payment_logs")
-      .update({
-        status: "completed",
-        provider_ref: cpm_payid,
-        payment_method,
-        phone: cel_phone_num || null,
-        paid_at: `${cpm_payment_date} ${cpm_payment_time}`,
-      })
-      .eq("transaction_id", cpm_trans_id);
-
-    if (log.user_id) {
-      const expiresAt = new Date();
-      expiresAt.setMonth(expiresAt.getMonth() + (log.plan === "annual" ? 12 : 3));
-
-      await supabaseAdmin
-        .from("profiles")
-        .update({ tier: "pro", premium_expires_at: expiresAt.toISOString() })
-        .eq("id", log.user_id);
-    } else if (log.email) {
-      const expiresAt = new Date();
-      expiresAt.setMonth(expiresAt.getMonth() + (log.plan === "annual" ? 12 : 3));
-
-      const { data: existing } = await supabaseAdmin
-        .from("profiles")
-        .select("id")
-        .eq("email", log.email)
-        .single();
-
-      if (existing) {
-        await supabaseAdmin
-          .from("profiles")
-          .update({ tier: "pro", premium_expires_at: expiresAt.toISOString() })
-          .eq("email", log.email);
-      }
-    }
+    await db.updateDocument(appwriteConfig.databaseId, appwriteConfig.collections.payments, log.$id, {
+      status: status || "completed",
+      provider_ref: provider_ref || null,
+      payment_method: payment_method || null,
+      phone: phone || null,
+      paid_at: paid_at || new Date().toISOString(),
+    });
 
     return NextResponse.json({ message: "OK" });
   } catch (err) {

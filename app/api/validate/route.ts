@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase";
+import { appwriteConfig, ensureAppwriteConfig, getAppwrite, newId } from "@/lib/appwrite";
+import { Query } from "node-appwrite";
 
 export const VALIDATION_QUESTIONS = [
   {
@@ -43,38 +44,35 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    const { data: existing } = await supabaseAdmin
-      .from("social_validations")
-      .select("id")
-      .eq("result_id", resultId)
-      .eq("validator_session_id", validatorSessionId)
-      .single();
+    ensureAppwriteConfig();
+    const { db } = getAppwrite();
 
-    if (existing) {
+    const existing = await db.listDocuments(
+      appwriteConfig.databaseId,
+      appwriteConfig.collections.validations,
+      [Query.equal("result_id", resultId), Query.equal("validator_session_id", validatorSessionId)]
+    );
+
+    if (existing.total > 0) {
       return NextResponse.json({ error: "Already validated" }, { status: 409 });
     }
 
-    const { error } = await supabaseAdmin.from("social_validations").insert({
+    await db.createDocument(appwriteConfig.databaseId, appwriteConfig.collections.validations, newId(), {
       result_id: resultId,
       validator_session_id: validatorSessionId,
       answers,
     });
 
-    if (error) {
-      return NextResponse.json({ error: "Failed to save validation" }, { status: 500 });
-    }
+    const validations = await db.listDocuments(appwriteConfig.databaseId, appwriteConfig.collections.validations, [
+      Query.equal("result_id", resultId),
+    ]);
 
-    const { data: validations } = await supabaseAdmin
-      .from("social_validations")
-      .select("answers")
-      .eq("result_id", resultId);
-
-    const count = validations?.length || 0;
+    const count = validations.total || 0;
 
     if (count >= 2) {
       const avgAnswers: Record<string, number> = {};
       VALIDATION_QUESTIONS.forEach((q) => {
-        const vals = validations!.map((v) => v.answers[q.id] || 0);
+        const vals = validations.documents.map((v) => (v as any).answers?.[q.id] || 0);
         avgAnswers[q.id] = Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
       });
 
@@ -84,10 +82,10 @@ export async function POST(req: NextRequest) {
           100
       );
 
-      await supabaseAdmin
-        .from("test_results")
-        .update({ social_score: socialScore, premium_badge_unlocked: true })
-        .eq("id", resultId);
+      await db.updateDocument(appwriteConfig.databaseId, appwriteConfig.collections.results, resultId, {
+        social_score: socialScore,
+        premium_badge_unlocked: true,
+      });
     }
 
     return NextResponse.json({ success: true, validationCount: count });
@@ -105,14 +103,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Missing resultId" }, { status: 400 });
   }
 
-  const { data, error } = await supabaseAdmin
-    .from("social_validations")
-    .select("id, created_at")
-    .eq("result_id", resultId);
+  ensureAppwriteConfig();
+  const { db } = getAppwrite();
+  const list = await db.listDocuments(appwriteConfig.databaseId, appwriteConfig.collections.validations, [
+    Query.equal("result_id", resultId),
+  ]);
 
-  if (error) {
-    return NextResponse.json({ error: "Failed to fetch validations" }, { status: 500 });
-  }
-
-  return NextResponse.json({ count: data?.length || 0, validations: data });
+  return NextResponse.json({ count: list.total || 0, validations: list.documents });
 }

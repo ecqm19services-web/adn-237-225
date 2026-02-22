@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase";
 import { nanoid } from "nanoid";
+import { appwriteConfig, ensureAppwriteConfig, getAppwrite, newId } from "@/lib/appwrite";
+import { Query } from "node-appwrite";
 
 export async function POST(req: NextRequest) {
   try {
@@ -19,12 +20,20 @@ export async function POST(req: NextRequest) {
       status: "pending",
     }));
 
-    const { error } = await supabaseAdmin.from("referrals").insert(referrals);
+    ensureAppwriteConfig();
+    const { db } = getAppwrite();
 
-    if (error) {
-      console.error("Referral insert error:", error);
-      return NextResponse.json({ error: "Failed to create referrals" }, { status: 500 });
-    }
+    await Promise.all(
+      referrals.map((r) =>
+        db.createDocument(appwriteConfig.databaseId, appwriteConfig.collections.referrals, newId(), {
+          inviter_id: r.inviter_id,
+          invitee_email: r.invitee_email,
+          invitee_session_id: r.result_id || null,
+          result_id: r.result_id || null,
+          status: r.status,
+        })
+      )
+    );
 
     return NextResponse.json({ success: true, count: referrals.length });
   } catch (err) {
@@ -41,16 +50,14 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Missing inviterId" }, { status: 400 });
   }
 
-  const { data, error } = await supabaseAdmin
-    .from("referrals")
-    .select("*")
-    .eq("inviter_id", inviterId)
-    .order("created_at", { ascending: false });
+  ensureAppwriteConfig();
+  const { db } = getAppwrite();
+  const list = await db.listDocuments(
+    appwriteConfig.databaseId,
+    appwriteConfig.collections.referrals,
+    [Query.equal("inviter_id", inviterId), Query.orderDesc("$createdAt")]
+  );
 
-  if (error) {
-    return NextResponse.json({ error: "Failed to fetch referrals" }, { status: 500 });
-  }
-
-  const completed = (data || []).filter((r) => r.status === "completed").length;
-  return NextResponse.json({ referrals: data, completedCount: completed });
+  const completed = (list.documents || []).filter((r) => r.status === "completed").length;
+  return NextResponse.json({ referrals: list.documents, completedCount: completed });
 }

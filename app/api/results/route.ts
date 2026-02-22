@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase";
 import { calculateScore } from "@/lib/questions";
 import { generateProfileInterpretation, generateShareHook } from "@/lib/ai-router";
+import { ensureAppwriteConfig, getAppwrite, appwriteConfig, newId } from "@/lib/appwrite";
+import { Query } from "node-appwrite";
 
 export async function POST(req: NextRequest) {
   try {
@@ -27,30 +28,23 @@ export async function POST(req: NextRequest) {
       aiInterpretation = description;
     }
 
-    const { data: result, error } = await supabaseAdmin
-      .from("test_results")
-      .insert({
-        user_id: userId || null,
-        session_id: sessionId,
-        score: total,
-        categories,
-        badge,
-        badge_color: badgeColor,
-        description,
-        ai_interpretation: aiInterpretation,
-        share_hook: shareHook,
-        email: email || null,
-        name: name || null,
-      })
-      .select()
-      .single();
+    ensureAppwriteConfig();
+    const { db } = getAppwrite();
+    const doc = await db.createDocument(appwriteConfig.databaseId, appwriteConfig.collections.results, newId(), {
+      user_id: userId || null,
+      session_id: sessionId,
+      score: total,
+      categories,
+      badge,
+      badge_color: badgeColor,
+      description,
+      ai_interpretation: aiInterpretation,
+      share_hook: shareHook,
+      email: email || null,
+      name: name || null,
+    });
 
-    if (error) {
-      console.error("DB insert error:", error);
-      return NextResponse.json({ error: "Failed to save result" }, { status: 500 });
-    }
-
-    return NextResponse.json({ result });
+    return NextResponse.json({ result: doc });
   } catch (err) {
     console.error("Results API error:", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
@@ -66,19 +60,14 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Missing sessionId or id" }, { status: 400 });
   }
 
-  const query = supabaseAdmin.from("test_results").select("*");
-
-  if (resultId) {
-    query.eq("id", resultId);
-  } else {
-    query.eq("session_id", sessionId!);
-  }
-
-  const { data, error } = await query.single();
-
-  if (error || !data) {
+  ensureAppwriteConfig();
+  const { db } = getAppwrite();
+  const queries = resultId ? [Query.equal("$id", resultId)] : [Query.equal("session_id", sessionId!)];
+  const list = await db.listDocuments(appwriteConfig.databaseId, appwriteConfig.collections.results, queries);
+  const doc = list.documents[0];
+  if (!doc) {
     return NextResponse.json({ error: "Result not found" }, { status: 404 });
   }
 
-  return NextResponse.json({ result: data });
+  return NextResponse.json({ result: doc });
 }
