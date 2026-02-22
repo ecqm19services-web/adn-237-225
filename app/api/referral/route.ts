@@ -28,7 +28,6 @@ export async function POST(req: NextRequest) {
         db.createDocument(appwriteConfig.databaseId, appwriteConfig.collections.referrals, newId(), {
           inviter_id: r.inviter_id,
           invitee_email: r.invitee_email,
-          invitee_session_id: r.result_id || null,
           result_id: r.result_id || null,
           status: r.status,
         })

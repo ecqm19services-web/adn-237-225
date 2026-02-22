@@ -22,7 +22,6 @@ export async function POST(req: NextRequest) {
     ensureAppwriteConfig();
     const { db } = getAppwrite();
     await db.createDocument(appwriteConfig.databaseId, appwriteConfig.collections.payments, newId(), {
-      user_id: userId || null,
       email,
       transaction_id: transactionId,
       amount,
@@ -30,6 +29,7 @@ export async function POST(req: NextRequest) {
       plan,
       status: "pending",
       provider: "wave",
+      meta: JSON.stringify({ userId, name }),
     });
 
     return NextResponse.json({

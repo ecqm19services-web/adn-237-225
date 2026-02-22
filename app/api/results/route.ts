@@ -31,17 +31,21 @@ export async function POST(req: NextRequest) {
     ensureAppwriteConfig();
     const { db } = getAppwrite();
     const doc = await db.createDocument(appwriteConfig.databaseId, appwriteConfig.collections.results, newId(), {
-      user_id: userId || null,
       session_id: sessionId,
+      email: email || null,
       score: total,
-      categories,
       badge,
       badge_color: badgeColor,
-      description,
-      ai_interpretation: aiInterpretation,
-      share_hook: shareHook,
-      email: email || null,
-      name: name || null,
+      data: JSON.stringify({
+        categories,
+        description,
+        ai_interpretation: aiInterpretation,
+        share_hook: shareHook,
+        name: name || null,
+        user_id: userId || null,
+      }),
+      social_score: 0,
+      premium: false,
     });
 
     return NextResponse.json({ result: doc });
@@ -69,5 +73,18 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Result not found" }, { status: 404 });
   }
 
-  return NextResponse.json({ result: doc });
+  const data = JSON.parse((doc as any).data || "{}");
+  const result = {
+    id: doc.$id,
+    session_id: (doc as any).session_id,
+    email: (doc as any).email,
+    score: (doc as any).score,
+    badge: (doc as any).badge,
+    badge_color: (doc as any).badge_color,
+    social_score: (doc as any).social_score,
+    premium_badge_unlocked: (doc as any).premium,
+    ...data,
+  };
+
+  return NextResponse.json({ result });
 }

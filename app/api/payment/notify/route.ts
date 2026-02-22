@@ -30,12 +30,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Transaction not found" }, { status: 404 });
     }
 
+    const currentMeta = JSON.parse((log as any).meta || "{}");
     await db.updateDocument(appwriteConfig.databaseId, appwriteConfig.collections.payments, log.$id, {
       status: status || "completed",
-      provider_ref: provider_ref || null,
-      payment_method: payment_method || null,
-      phone: phone || null,
-      paid_at: paid_at || new Date().toISOString(),
+      meta: JSON.stringify({
+        ...currentMeta,
+        provider_ref: provider_ref || null,
+        payment_method: payment_method || null,
+        phone: phone || null,
+        paid_at: paid_at || new Date().toISOString(),
+      }),
     });
 
     return NextResponse.json({ message: "OK" });

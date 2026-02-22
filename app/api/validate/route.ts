@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
     const existing = await db.listDocuments(
       appwriteConfig.databaseId,
       appwriteConfig.collections.validations,
-      [Query.equal("result_id", resultId), Query.equal("validator_session_id", validatorSessionId)]
+      [Query.equal("result_id", resultId), Query.equal("validator_session", validatorSessionId)]
     );
 
     if (existing.total > 0) {
@@ -59,8 +59,8 @@ export async function POST(req: NextRequest) {
 
     await db.createDocument(appwriteConfig.databaseId, appwriteConfig.collections.validations, newId(), {
       result_id: resultId,
-      validator_session_id: validatorSessionId,
-      answers,
+      validator_session: validatorSessionId,
+      answers: JSON.stringify(answers),
     });
 
     const validations = await db.listDocuments(appwriteConfig.databaseId, appwriteConfig.collections.validations, [
@@ -72,7 +72,10 @@ export async function POST(req: NextRequest) {
     if (count >= 2) {
       const avgAnswers: Record<string, number> = {};
       VALIDATION_QUESTIONS.forEach((q) => {
-        const vals = validations.documents.map((v) => (v as any).answers?.[q.id] || 0);
+        const vals = validations.documents.map((v) => {
+          const ans = JSON.parse((v as any).answers || "{}");
+          return ans[q.id] || 0;
+        });
         avgAnswers[q.id] = Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
       });
 
@@ -84,7 +87,7 @@ export async function POST(req: NextRequest) {
 
       await db.updateDocument(appwriteConfig.databaseId, appwriteConfig.collections.results, resultId, {
         social_score: socialScore,
-        premium_badge_unlocked: true,
+        premium: true,
       });
     }
 
